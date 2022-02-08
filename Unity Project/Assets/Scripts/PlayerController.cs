@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,7 +6,7 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField]
     private PlayerMovementSettings movementSettings;
-    private float groundCheckRadius = 0.025f;
+    private float groundCheckRadius = 0.2f;
 
     // Acceleration
     private float accelerationX = 0.0f;
@@ -21,6 +22,7 @@ public class PlayerController : MonoBehaviour
     private Camera mainCamera;
     private Vector2 screenCenter;
     private Vector2 viewCenter;
+    private PlayerControls controls;
 
     // Temp
     private bool _lockCursor = false;
@@ -31,8 +33,7 @@ public class PlayerController : MonoBehaviour
             Cursor.visible = !_lockCursor;
         } 
     }
-
-    private PlayerControls controls;
+    private bool _jumpPending = false;
 
     public bool IsGrounded { 
         get {
@@ -58,77 +59,54 @@ public class PlayerController : MonoBehaviour
         controls = new PlayerControls();
     }
 
-    // Start is called before the first frame update
     void Start()
     {
-        Debug.Log("Hey Luka!");
+
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (Keyboard.current.cKey.wasPressedThisFrame)
-        {
-            int a = 1;
-            // fake method
-        }
-
-        // input
-        int xplus = 0; 
-        int zplus = 0;
-        if (Keyboard.current.dKey.isPressed)
-            xplus = 1;
-        else if (Keyboard.current.aKey.isPressed)
-            xplus = -1;
-        if (Keyboard.current.wKey.isPressed)
-            zplus = 1;
-        else if (Keyboard.current.sKey.isPressed)
-            zplus = -1;
-
-        Vector2 mousePosition = Mouse.current.position.ReadValue();
-        Vector2 view = mainCamera.ScreenToViewportPoint(Mouse.current.position.ReadValue()); // lock cursor if we click in the window
-        bool true_case = view.x > 0 && view.y > 0 && view.x < 1 && view.y < 1 && Mouse.current.leftButton.wasPressedThisFrame && !LockCursor;
-        bool false_case = Keyboard.current.escapeKey.wasPressedThisFrame;
-
-        if (true_case)
+        if (Mouse.current.leftButton.wasPressedThisFrame && !LockCursor && Utils.CheckPointInScreen(Mouse.current.position.ReadValue()))
             LockCursor = true;
-        if (false_case)
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
             LockCursor = false;
 
-        // calculate rotation
         if (LockCursor)
-        {
-            /*Vector2 diff = view - viewCenter;
-            yRotation += diff.x* movementSettings.yRotationSens * Time.deltaTime * 500f;
-            xRotation -= diff.y* movementSettings.xRotationSens * Time.deltaTime * 500f;
-            xRotation = Mathf.Clamp(xRotation, movementSettings.xRotationMin, movementSettings.xRotationMax);
-            Mouse.current.WarpCursorPosition(screenCenter);*/
+            PlayerLook();
 
-            //Vector2 diff = mousePosition - screenCenter;
-            Vector2 diff = controls.player_controls.Look.ReadValue<Vector2>();
-            yRotation += diff.x* movementSettings.yRotationSens * Time.deltaTime;
-            xRotation -= diff.y* movementSettings.xRotationSens * Time.deltaTime;
-            xRotation = Mathf.Clamp(xRotation, movementSettings.xRotationMin, movementSettings.xRotationMax);
-            Mouse.current.WarpCursorPosition(screenCenter);
+        PlayerRotate(xRotation, yRotation);
+        ApplyGravity();
 
-            //Vector2 diff = 
-        }
+        PlayerMove();
+    }
 
-        // apply rotation
-        Vector3 v = this.gameObject.transform.localEulerAngles;
+    #region Update Methods
+    private void PlayerLook()
+    {
+        Vector2 diff = controls.player_controls.Look.ReadValue<Vector2>();
+        yRotation += diff.x* movementSettings.yRotationSens * Time.deltaTime;
+        yRotation += diff.x* movementSettings.yRotationSens * Time.deltaTime;
+        xRotation -= diff.y* movementSettings.xRotationSens * Time.deltaTime;
+        xRotation = Mathf.Clamp(xRotation, movementSettings.xRotationMin, movementSettings.xRotationMax);
+        Mouse.current.WarpCursorPosition(screenCenter);
+    }
+
+    private void PlayerRotate(float xRotation, float yRotation)
+    {
+        Vector2 v = this.gameObject.transform.localEulerAngles;
         v.y = yRotation;
         this.gameObject.transform.localEulerAngles = v;
 
         v = cameraHarness.transform.localEulerAngles;
         v.x = xRotation;
         cameraHarness.transform.localEulerAngles = v;
+    }
 
-        // grounded check
+    private void ApplyGravity()
+    {
         if (IsGrounded)
         {
             accelerationY = 0;
-            if ((movementSettings.holdToJump) ? Keyboard.current.spaceKey.isPressed : Keyboard.current.spaceKey.wasPressedThisFrame)
-                PlayerJump();
         }
         else
         {
@@ -136,19 +114,33 @@ public class PlayerController : MonoBehaviour
             if (accelerationY < -movementSettings.maxFallSpeed)
                 accelerationY = -movementSettings.maxFallSpeed;
         }
+    }
 
+    private void PlayerMove()
+    {
+        // input
+        Vector2 move_input = controls.player_controls.Move.ReadValue<Vector2>();
+        if (Mathf.Abs(move_input.x) > 0)
+            move_input.x = Mathf.Sign(move_input.x);
+        if (Mathf.Abs(move_input.y) > 0)
+            move_input.y = Mathf.Sign(move_input.y);
 
         // acceleration
-        if (Mathf.Abs(xplus) > 0)
-            accelerationX += Mathf.Sign(xplus) * Time.deltaTime * movementSettings.accelerationModifier;
+        if (Mathf.Abs(move_input.x) > 0)
+            accelerationX += Mathf.Sign(move_input.x) * Time.deltaTime * movementSettings.accelerationModifier;
         else
             Utils.ReduceBy(ref accelerationX, Time.deltaTime * movementSettings.decelerationModifier);
-        if (Mathf.Abs(zplus) > 0)
-            accelerationZ += Mathf.Sign(zplus) * Time.deltaTime * movementSettings.accelerationModifier;
+        if (Mathf.Abs(move_input.y) > 0)
+            accelerationZ += Mathf.Sign(move_input.y) * Time.deltaTime * movementSettings.accelerationModifier;
         else
             Utils.ReduceBy(ref accelerationZ, Time.deltaTime * movementSettings.decelerationModifier);
 
         accelerationX = Utils.AbsClamp(accelerationX, 0.0f, 1.0f);
+        if (_jumpPending)
+        {
+            accelerationY = movementSettings.jumpAcceleration;
+            _jumpPending = false;
+        }
         accelerationZ = Utils.AbsClamp(accelerationZ, 0.0f, 1.0f);
 
         // movement
@@ -156,25 +148,36 @@ public class PlayerController : MonoBehaviour
         moveVector += this.transform.forward * accelerationZ;
         moveVector += this.transform.right * accelerationX;
         controller.Move(moveVector * Time.deltaTime * movementSettings.speed);
-
     }
+    #endregion
 
-    private void PlayerJump()
-    {
-        accelerationY = movementSettings.jumpAcceleration; 
-    }
-
-    #region input manager
+    #region Input manager
 
     private void OnEnable()
     {
         controls.Enable();
+        controls.player_controls.Jump.performed += Jump_performed;
     }
 
     private void OnDisable()
     {
         controls.Disable();
+        controls.player_controls.Jump.performed -= Jump_performed;
     }
+    
+    private void Jump_performed(InputAction.CallbackContext obj)
+    {
+        if (IsGrounded)
+        {
+            PlayerJump();
+        }
+    }
+
+    private void PlayerJump()
+    {
+        _jumpPending = true;
+    }
+
 
     #endregion
 

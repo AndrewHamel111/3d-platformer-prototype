@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem.Controls;
 
 public class Utils
 {
@@ -28,5 +30,10 @@ public class Utils
             return Mathf.Clamp(a, -max, -min);
         else
             return Mathf.Clamp(a, min, max);
+    }
+
+    internal static bool CheckPointInScreen(Vector2 position)
+    {
+        return position.x > 0 && position.y > 0 && position.x < Screen.width && position.y < Screen.height;
     }
 }

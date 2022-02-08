@@ -15,6 +15,5 @@ public class PlayerMovementSettings
     public float yRotationSens;
     public float xRotationMin;
     public float xRotationMax;
-    public bool holdToJump;
     public LayerMask groundLayer;
 }
