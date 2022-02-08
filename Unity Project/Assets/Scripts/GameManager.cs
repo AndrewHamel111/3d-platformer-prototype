@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GameController : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
-    public static GameController Instance;
+    public static GameManager Instance;
 
     private void Awake()
     {
@@ -22,6 +22,7 @@ public class GameController : MonoBehaviour
 
     private void TrueAwake()
     {
-        Cursor.visible = false;
+        //Cursor.visible = false;
+        //Application.targetFrameRate = 144;
     }
 }

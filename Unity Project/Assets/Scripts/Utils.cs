@@ -4,16 +4,22 @@ using UnityEngine;
 
 public class Utils
 {
-    public static void ReduceBy(ref float a, float b)
+    /// <summary>
+    /// Reduces the magnitude of a by b. If a is less than b, sets a to 0.
+    /// </summary>
+    /// <param name="value">Reference to float to change</param>
+    /// <param name="delta">Amount to change value by.</param>
+    public static void ReduceBy(ref float value, float delta)
     {
-        b = Mathf.Abs(b);
-        if (Mathf.Abs(a) < b)
-            a = 0.0f;
-
-        if (a > 0.0f)
-            a -= b;
+        delta = Mathf.Abs(delta);
+        if (Mathf.Abs(value) < delta)
+        {
+            value = 0.0f;
+        }
         else
-            a += b;
+        {
+            value -= delta * Mathf.Sign(value);
+        }
     }
 
     public static float AbsClamp(float a, float min, float max)
